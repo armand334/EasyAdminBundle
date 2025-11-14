@@ -483,27 +483,35 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
-        // create form here ?
-
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
-        foreach ($batchActionDto->getEntityIds() as $entityId) {
-            $entityInstance = $repository->find($entityId);
-            if (null === $entityInstance) {
-                continue;
-            }
 
-            $entityDto = $context->getEntity()->newWithInstance($entityInstance);
-            if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
-                throw new ForbiddenActionException($context);
-            }
+        if (!empty($batchActionDto->getEntityIds())) {
+            $this->container->get(FieldFactory::class)->processFields($repository->find($batchActionDto->getEntityIds()[0]), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
+            $context->getCrud()->setFieldAssets($this->getFieldAssets($repository->find($batchActionDto->getEntityIds()[0])->getFields()));
+            $this->container->get(ActionFactory::class)->processEntityActions($repository->find($batchActionDto->getEntityIds()[0]), $context->getCrud()->getActionsConfig());
+        }
 
-            if (!$entityDto->isAccessible()) {
-                throw new InsufficientEntityPermissionException($context);
+        $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
+        $editForm->handleRequest($context->getRequest());
+        if ($editForm->isSubmitted() && $editForm->isValid()) {
+            foreach ($entityIds as $entityId) {
+                $entityInstance = $repository->find($entityId);
+                if (null === $entityInstance) {
+                    continue;
+                }
+                $entityDto = $context->getEntity()->newWithInstance($entityInstance);
+                if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
+                    throw new ForbiddenActionException($context);
+                }
+
+                if (!$entityDto->isAccessible()) {
+                    throw new InsufficientEntityPermissionException($context);
+                }
+
+                // update entity with new values
             }
-            
-            dd($entityInstance);
         }
 
         $responseParameters = $this->configureResponseParameters(KeyValueStore::new([

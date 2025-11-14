@@ -16,6 +16,7 @@ use Symfony\Contracts\Translation\TranslatableInterface;
 final class Action
 {
     public const BATCH_DELETE = 'batchDelete';
+    public const BATCH_EDIT = 'batchEdit';
     public const DELETE = 'delete';
     public const DETAIL = 'detail';
     public const EDIT = 'edit';

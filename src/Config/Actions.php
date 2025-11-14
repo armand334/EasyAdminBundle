@@ -75,6 +75,10 @@ final class Actions
         if (Action::DELETE === $actionName) {
             $this->dto->removeAction($pageName, Action::BATCH_DELETE);
         }
+//        // same logic as above
+//        if (Action::EDIT === $actionName) {
+//            $this->dto->removeAction($pageName, Action::BATCH_EDIT);
+//        }
 
         return $this;
     }
@@ -136,6 +140,10 @@ final class Actions
         if (\in_array(Action::DELETE, $disabledActionNames, true)) {
             $disabledActionNames[] = Action::BATCH_DELETE;
         }
+        // same logic as above
+//        if (\in_array(Action::EDIT, $disabledActionNames, true)) {
+//            $disabledActionNames[] = Action::BATCH_EDIT;
+//        }
 
         $this->dto->disableActions($disabledActionNames);
 
@@ -166,6 +174,13 @@ final class Actions
             return Action::new(Action::BATCH_DELETE, t('action.delete', domain: 'EasyAdminBundle'), null)
                 ->linkToCrudAction(Action::BATCH_DELETE)
                 ->asDangerAction();
+        }
+
+        if (Action::BATCH_EDIT === $actionName) {
+            return Action::new(Action::BATCH_EDIT, t('action.edit', domain: 'EasyAdminBundle'), null)
+                ->linkToCrudAction(Action::BATCH_EDIT)
+                ->setCssClass('action-'.Action::BATCH_EDIT)
+                ->addCssClass('btn btn-primary mr-0');
         }
 
         if (Action::NEW === $actionName) {

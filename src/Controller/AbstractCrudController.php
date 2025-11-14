@@ -483,9 +483,59 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
-        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
-        $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        dd($this->container->get(ActionFactory::class));
+        $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
+        $editForm->handleRequest($context->getRequest());
+        if ($editForm->isSubmitted() && $editForm->isValid()) {
+            /** @var EntityManagerInterface $entityManager */
+            $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
+            $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
+            foreach ($batchActionDto->getEntityIds() as $entityId) {
+                $entityInstance = $repository->find($entityId);
+                if (null === $entityInstance) {
+                    continue;
+                }
+
+                $entityDto = $context->getEntity()->newWithInstance($entityInstance);
+                if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
+                    throw new ForbiddenActionException($context);
+                }
+
+                if (!$entityDto->isAccessible()) {
+                    throw new InsufficientEntityPermissionException($context);
+                }
+
+                $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
+                $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+                $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
+
+                $this->processUploadedFiles($editForm);
+
+                $event = new BeforeEntityUpdatedEvent($entityInstance);
+                $this->container->get('event_dispatcher')->dispatch($event);
+                $entityInstance = $event->getEntityInstance();
+
+                $this->updateEntity($this->container->get('doctrine')->getManagerForClass($context->getEntity()->getFqcn()), $entityInstance);
+
+                $this->container->get('event_dispatcher')->dispatch(new AfterEntityUpdatedEvent($entityInstance));
+            }
+
+            $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
+                'pageName' => Crud::PAGE_EDIT,
+                'templateName' => 'crud/edit',
+                'edit_form' => $editForm,
+                'entity' => $context->getEntity(),
+                'batchActionDto' => $batchActionDto,
+            ]));
+
+            $event = new AfterCrudActionEvent($context, $responseParameters);
+            $this->container->get('event_dispatcher')->dispatch($event);
+            if ($event->isPropagationStopped()) {
+                return $event->getResponse();
+            }
+
+            return $responseParameters;
+
+        }
     }
 
     public function autocomplete(AdminContext $context): JsonResponse

@@ -472,7 +472,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
     /**
      * @param BatchActionDto<TEntity> $batchActionDto
      */
-    public function batchEdit(AdminContext $context, BatchActionDto $batchActionDto): Response
+    public function batchEdit(AdminContext $context, BatchActionDto $batchActionDto)
     {
         $event = new BeforeCrudActionEvent($context);
         $this->container->get('event_dispatcher')->dispatch($event);
@@ -489,6 +489,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
 
+        //TEMP
         $batchEditActions = ActionCollection::new([
             $context->getCrud()->getActionsConfig()->getAction(Action::BATCH_EDIT, Action::SAVE_AND_RETURN),
         ]);

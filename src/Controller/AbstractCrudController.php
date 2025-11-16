@@ -225,6 +225,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
 
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+        dd($context->getEntity(), $context->getCrud()->getActionsConfig());
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
         /** @var TEntity $entityInstance */
         $entityInstance = $context->getEntity()->getInstance();

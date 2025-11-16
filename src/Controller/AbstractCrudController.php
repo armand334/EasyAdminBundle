@@ -482,6 +482,12 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if (!$this->isCsrfTokenValid('ea-batch-action-'.Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
+        if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::NEW, 'entity' => null, 'entityFqcn' => $context->getEntity()->getFqcn()])) {
+            throw new ForbiddenActionException($context);
+        }
+        if (!$context->getEntity()->isAccessible()) {
+            throw new InsufficientEntityPermissionException($context);
+        }
 
         /** @var class-string<TEntity> $entityFqcn */
         $entityFqcn = $context->getEntity()->getFqcn();

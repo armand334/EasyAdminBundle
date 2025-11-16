@@ -481,29 +481,61 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if (!$this->isCsrfTokenValid('ea-batch-action-' . Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
-        
+
+        /** @var class-string<TEntity> $entityFqcn */
+        $entityFqcn = $context->getEntity()->getFqcn();
+        $context->getEntity()->setInstance($this->createEntity($entityFqcn));
+        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_NEW)), Crud::PAGE_NEW);
+        $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+        $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
+
+        $dummyForm = $this->createNewForm($context->getEntity(), $context->getCrud()->getNewFormOptions(), $context);
+        $dummyForm->handleRequest($context->getRequest());
+
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
-        foreach ($batchActionDto->getEntityIds() as $entityId) {
-            $entityInstance = $repository->find($entityId);
-            if (null === $entityInstance) {
-                continue;
-            }
-            $entityDto = $context->getEntity()->newWithInstance($entityInstance);
-            if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
-                throw new ForbiddenActionException($context);
-            }
-            if (!$entityDto->isAccessible()) {
-                throw new InsufficientEntityPermissionException($context);
-            }
+        if ($dummyForm->isSubmitted() && $dummyForm->isValid()) {
+            foreach ($batchActionDto->getEntityIds() as $entityId) {
+                $entityInstance = $repository->find($entityId);
+                if (null === $entityInstance) {
+                    continue;
+                }
+                $entityDto = $context->getEntity()->newWithInstance($entityInstance);
+                if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
+                    throw new ForbiddenActionException($context);
+                }
+                if (!$entityDto->isAccessible()) {
+                    throw new InsufficientEntityPermissionException($context);
+                }
 
-            dd($entityDto);
+                $this->processUploadedFiles($dummyForm);
 
-            // update entity with new values
+                $event = new BeforeEntityUpdatedEvent($entityInstance);
+                $this->container->get('event_dispatcher')->dispatch($event);
+                $entityInstance = $event->getEntityInstance();
+
+                $this->updateEntity($this->container->get('doctrine')->getManagerForClass($context->getEntity()->getFqcn()), $entityInstance);
+
+                $this->container->get('event_dispatcher')->dispatch(new AfterEntityUpdatedEvent($entityInstance));
+            }
         }
 
-        return null;
+        $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
+            'pageName' => Crud::PAGE_EDIT,
+            'templateName' => 'crud/edit',
+            'edit_form' => $dummyForm,
+            'entity' => $context->getEntity(),
+            'batchActionDto' => $batchActionDto,
+        ]));
+
+        $event = new AfterCrudActionEvent($context, $responseParameters);
+        $this->container->get('event_dispatcher')->dispatch($event);
+        if ($event->isPropagationStopped()) {
+            return $event->getResponse();
+        }
+
+        return $responseParameters;
     }
 
 

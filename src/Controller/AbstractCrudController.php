@@ -486,17 +486,17 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         /** @var class-string<TEntity> $entityFqcn */
         $entityFqcn = $context->getEntity()->getFqcn();
         $context->getEntity()->setInstance($this->createEntity($entityFqcn));
-        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
-        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Action::BATCH_EDIT)), Action::SAVE_AND_RETURN);
+        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_NEW)), Crud::PAGE_NEW);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+        $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
-        $dummyForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
-        $dummyForm->handleRequest($context->getRequest());
+        $newForm = $this->createNewForm($context->getEntity(), $context->getCrud()->getNewFormOptions(), $context);
+        $newForm->handleRequest($context->getRequest());
 
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
-        if ($dummyForm->isSubmitted() && $dummyForm->isValid()) {
+        if ($newForm->isSubmitted() && $newForm->isValid()) {
             foreach ($batchActionDto->getEntityIds() as $entityId) {
                 $entityInstance = $repository->find($entityId);
                 if (null === $entityInstance) {
@@ -525,7 +525,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
             'pageName' => Crud::PAGE_EDIT,
             'templateName' => 'crud/edit',
-            'edit_form' => $dummyForm,
+            'edit_form' => $newForm,
             'entity' => $context->getEntity(),
             'batchActionDto' => $batchActionDto,
         ]));

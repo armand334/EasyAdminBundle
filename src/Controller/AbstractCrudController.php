@@ -483,16 +483,17 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
-        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
-        $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
-
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
 
         /** @var TEntity $entityInstance */
         $entityIds = $batchActionDto->getEntityIds();
+        $tempEntityInstance = $repository->find($entityIds[0]);
+
+        $this->container->get(FieldFactory::class)->processFields($tempEntityInstance, FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
+        $context->getCrud()->setFieldAssets($this->getFieldAssets($tempEntityInstance->getFields()));
+        $this->container->get(ActionFactory::class)->processEntityActions($tempEntityInstance, $context->getCrud()->getActionsConfig());
 
         $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
         $editForm->handleRequest($context->getRequest());

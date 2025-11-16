@@ -88,6 +88,8 @@ abstract class AbstractCrudController extends AbstractController implements Crud
 
     public function configureActions(Actions $actions): Actions
     {
+        //temp
+        $actions->add(Action::BATCH_EDIT, Action::SAVE_AND_RETURN);
         return $actions;
     }
 
@@ -407,7 +409,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
     /**
      * @param BatchActionDto<TEntity> $batchActionDto
      */
-    public function batchDelete(AdminContext $context, BatchActionDto $batchActionDto): Response
+    public function batchDelete(AdminContext $context, BatchActionDto $batchActionDto)
     {
         $event = new BeforeCrudActionEvent($context);
         $this->container->get('event_dispatcher')->dispatch($event);
@@ -471,7 +473,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
     /**
      * @param BatchActionDto<TEntity> $batchActionDto
      */
-    public function batchEdit(AdminContext $context, BatchActionDto $batchActionDto)
+    public function batchEdit(AdminContext $context, BatchActionDto $batchActionDto): Response
     {
         $event = new BeforeCrudActionEvent($context);
         $this->container->get('event_dispatcher')->dispatch($event);
@@ -487,6 +489,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $context->getEntity()->setInstance($this->createEntity($entityFqcn));
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+        $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
         $dummyForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
         $dummyForm->handleRequest($context->getRequest());

@@ -479,34 +479,53 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if ($event->isPropagationStopped()) {
             return $event->getResponse();
         }
+
         if (!$this->isCsrfTokenValid('ea-batch-action-'.Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
+        // Set up the entity with a dummy instance to configure fields
+        /** @var EntityManagerInterface $entityManager */
+        $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
+        $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
+
+        // Get first entity to set up the context properly
+        $firstEntityInstance = $repository->find($batchActionDto->getEntityIds()[0] ?? null);
+        if (null === $firstEntityInstance) {
+            return $this->redirect($this->container->get(AdminUrlGenerator::class)->setAction(Action::INDEX)->generateUrl());
+        }
+
+        $context->getEntity()->setInstance($firstEntityInstance);
+
+        // Process fields for EDIT page
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        dd($context->getCrud()->getActionsConfig());
-        $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
+
+        // Get actions config for EDIT page - this is the key part
+        $actionsConfig = $context->getCrud()->getActionsConfig();
+        $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $actionsConfig);
 
         $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
         $editForm->handleRequest($context->getRequest());
 
-        /** @var EntityManagerInterface $entityManager */
-        $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
-        $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
         if ($editForm->isSubmitted() && $editForm->isValid()) {
             foreach ($batchActionDto->getEntityIds() as $entityId) {
                 $entityInstance = $repository->find($entityId);
                 if (null === $entityInstance) {
                     continue;
                 }
+
                 $entityDto = $context->getEntity()->newWithInstance($entityInstance);
-                if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
+                if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $entityDto, 'entityFqcn' => $context->getEntity()->getFqcn()])) {
                     throw new ForbiddenActionException($context);
                 }
+
                 if (!$entityDto->isAccessible()) {
                     throw new InsufficientEntityPermissionException($context);
                 }
+
+                // Update entity with form data
+                $this->container->get(EntityUpdater::class)->updateEntity($entityDto, $editForm->getData());
 
                 $this->processUploadedFiles($editForm);
 
@@ -514,15 +533,17 @@ abstract class AbstractCrudController extends AbstractController implements Crud
                 $this->container->get('event_dispatcher')->dispatch($event);
                 $entityInstance = $event->getEntityInstance();
 
-                $this->updateEntity($this->container->get('doctrine')->getManagerForClass($context->getEntity()->getFqcn()), $entityInstance);
+                $this->updateEntity($entityManager, $entityInstance);
 
                 $this->container->get('event_dispatcher')->dispatch(new AfterEntityUpdatedEvent($entityInstance));
             }
+
+            return $this->redirect($this->container->get(AdminUrlGenerator::class)->setAction(Action::INDEX)->generateUrl());
         }
 
         $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
             'pageName' => Crud::PAGE_EDIT,
-            'templateName' => 'crud/edit',
+            'templateName' => 'crud/batch_edit',
             'edit_form' => $editForm,
             'entity' => $context->getEntity(),
             'batchActionDto' => $batchActionDto,

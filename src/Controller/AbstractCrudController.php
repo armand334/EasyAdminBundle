@@ -481,12 +481,11 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if (!$this->isCsrfTokenValid('ea-batch-action-' . Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
-
-        // looping over each entity
+        
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
-        foreach ($entityIds as $entityId) {
+        foreach ($batchActionDto->getEntityIds() as $entityId) {
             $entityInstance = $repository->find($entityId);
             if (null === $entityInstance) {
                 continue;

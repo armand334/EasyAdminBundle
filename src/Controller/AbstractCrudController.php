@@ -88,8 +88,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
 
     public function configureActions(Actions $actions): Actions
     {
-        //temp
-        $actions->add(Action::BATCH_EDIT, Action::SAVE_AND_RETURN);
         return $actions;
     }
 
@@ -489,7 +487,11 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $context->getEntity()->setInstance($this->createEntity($entityFqcn));
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+
+        $originalPageName = $context->getCrud()->getCurrentPage();
+        $context->getCrud()->setPageName(Crud::PAGE_EDIT);
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
+        $context->getCrud()->setPageName($originalPageName);
 
         $dummyForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
         $dummyForm->handleRequest($context->getRequest());

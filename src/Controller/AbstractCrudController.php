@@ -482,28 +482,22 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if (!$this->isCsrfTokenValid('ea-batch-action-'.Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
-        if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::NEW, 'entity' => null, 'entityFqcn' => $context->getEntity()->getFqcn()])) {
-            throw new ForbiddenActionException($context);
-        }
-        if (!$context->getEntity()->isAccessible()) {
-            throw new InsufficientEntityPermissionException($context);
-        }
 
-        /** @var class-string<TEntity> $entityFqcn */
-        $entityFqcn = $context->getEntity()->getFqcn();
-        $context->getEntity()->setInstance($this->createEntity($entityFqcn));
-        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_NEW)), Crud::PAGE_NEW);
+        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
-
-        $newForm = $this->createNewForm($context->getEntity(), $context->getCrud()->getNewFormOptions(), $context);
-        $newForm->handleRequest($context->getRequest());
 
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
-        if ($newForm->isSubmitted() && $newForm->isValid()) {
-            foreach ($batchActionDto->getEntityIds() as $entityId) {
+
+        /** @var TEntity $entityInstance */
+        $entityIds = $batchActionDto->getEntityIds();
+
+        $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
+        $editForm->handleRequest($context->getRequest());
+        if ($editForm->isSubmitted() && $editForm->isValid()) {
+            foreach ( $entityIds as $entityId) {
                 $entityInstance = $repository->find($entityId);
                 if (null === $entityInstance) {
                     continue;
@@ -516,7 +510,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
                     throw new InsufficientEntityPermissionException($context);
                 }
 
-                $this->processUploadedFiles($dummyForm);
+                $this->processUploadedFiles($editForm);
 
                 $event = new BeforeEntityUpdatedEvent($entityInstance);
                 $this->container->get('event_dispatcher')->dispatch($event);
@@ -531,7 +525,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
             'pageName' => Crud::PAGE_EDIT,
             'templateName' => 'crud/edit',
-            'edit_form' => $newForm,
+            'edit_form' => $editForm,
             'entity' => $context->getEntity(),
             'batchActionDto' => $batchActionDto,
         ]));

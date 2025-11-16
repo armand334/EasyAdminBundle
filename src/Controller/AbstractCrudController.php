@@ -471,63 +471,40 @@ abstract class AbstractCrudController extends AbstractController implements Crud
     /**
      * @param BatchActionDto<TEntity> $batchActionDto
      */
-    public function batchEdit(AdminContext $context, BatchActionDto $batchActionDto): Response
+    public function batchEdit(AdminContext $context, BatchActionDto $batchActionDto)
     {
         $event = new BeforeCrudActionEvent($context);
         $this->container->get('event_dispatcher')->dispatch($event);
         if ($event->isPropagationStopped()) {
             return $event->getResponse();
         }
-
         if (!$this->isCsrfTokenValid('ea-batch-action-' . Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
+        // looping over each entity
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
-
-        if (!empty($batchActionDto->getEntityIds())) {
-            $this->container->get(FieldFactory::class)->processFields($repository->find($batchActionDto->getEntityIds()[0]), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
-            $context->getCrud()->setFieldAssets($this->getFieldAssets($repository->find($batchActionDto->getEntityIds()[0])->getFields()));
-            $this->container->get(ActionFactory::class)->processEntityActions($repository->find($batchActionDto->getEntityIds()[0]), $context->getCrud()->getActionsConfig());
-        }
-
-        $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
-        $editForm->handleRequest($context->getRequest());
-        if ($editForm->isSubmitted() && $editForm->isValid()) {
-            foreach ($entityIds as $entityId) {
-                $entityInstance = $repository->find($entityId);
-                if (null === $entityInstance) {
-                    continue;
-                }
-                $entityDto = $context->getEntity()->newWithInstance($entityInstance);
-                if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
-                    throw new ForbiddenActionException($context);
-                }
-
-                if (!$entityDto->isAccessible()) {
-                    throw new InsufficientEntityPermissionException($context);
-                }
-
-                // update entity with new values
+        foreach ($entityIds as $entityId) {
+            $entityInstance = $repository->find($entityId);
+            if (null === $entityInstance) {
+                continue;
             }
+            $entityDto = $context->getEntity()->newWithInstance($entityInstance);
+            if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::EDIT, 'entity' => $context->getEntity(), 'entityFqcn' => $context->getEntity()->getFqcn()])) {
+                throw new ForbiddenActionException($context);
+            }
+            if (!$entityDto->isAccessible()) {
+                throw new InsufficientEntityPermissionException($context);
+            }
+
+            dd($entityDto);
+
+            // update entity with new values
         }
 
-        $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
-            'pageName' => Crud::PAGE_EDIT,
-            'templateName' => 'crud/edit',
-            'entity' => $context->getEntity(),
-            'batchActionDto' => $batchActionDto
-        ]));
-
-        $event = new AfterCrudActionEvent($context, $responseParameters);
-        $this->container->get('event_dispatcher')->dispatch($event);
-        if ($event->isPropagationStopped()) {
-            return $event->getResponse();
-        }
-
-        return $responseParameters;
+        return null;
     }
 
 

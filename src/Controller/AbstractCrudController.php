@@ -478,7 +478,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if ($event->isPropagationStopped()) {
             return $event->getResponse();
         }
-        if (!$this->isCsrfTokenValid('ea-batch-action-' . Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
+        if (!$this->isCsrfTokenValid('ea-batch-action-'.Action::BATCH_EDIT, $batchActionDto->getCsrfToken())) {
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
         
@@ -487,11 +487,11 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         /** @var class-string<TEntity> $entityFqcn */
         $entityFqcn = $context->getEntity()->getFqcn();
         $context->getEntity()->setInstance($this->createEntity($entityFqcn));
-        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_NEW)), Crud::PAGE_NEW);
+        $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
-        $dummyForm = $this->createNewForm($context->getEntity(), $context->getCrud()->getNewFormOptions(), $context);
+        $dummyForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
         $dummyForm->handleRequest($context->getRequest());
 
         /** @var EntityManagerInterface $entityManager */

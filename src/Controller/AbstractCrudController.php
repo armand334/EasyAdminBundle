@@ -225,7 +225,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
 
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        dd($context->getEntity(), $context->getCrud()->getActionsConfig());
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
         /** @var TEntity $entityInstance */
         $entityInstance = $context->getEntity()->getInstance();
@@ -312,7 +311,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $context->getEntity()->setInstance($this->createEntity($entityFqcn));
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_NEW)), Crud::PAGE_NEW);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        dd($context->getEntity(), $context->getCrud()->getActionsConfig());
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
         $newForm = $this->createNewForm($context->getEntity(), $context->getCrud()->getNewFormOptions(), $context);
@@ -485,9 +483,9 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
+        $context->getCrud()->setPageName('edit');
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        dd($context->getEntity(), $context->getCrud()->getActionsConfig());
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
         $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);
@@ -497,7 +495,7 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
         if ($editForm->isSubmitted() && $editForm->isValid()) {
-            foreach ( $entityIds as $entityId) {
+            foreach ($batchActionDto->getEntityIds() as $entityId) {
                 $entityInstance = $repository->find($entityId);
                 if (null === $entityInstance) {
                     continue;

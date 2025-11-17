@@ -22,6 +22,7 @@ class Crud
     public const PAGE_NEW = 'new';
     public const ACTION_NAMES = [
         'autocomplete', // Internal action
+        Action::BATCH_EDIT,
         Action::BATCH_DELETE,
         Action::DELETE,
         Action::DETAIL,

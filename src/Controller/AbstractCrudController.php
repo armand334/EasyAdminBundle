@@ -434,11 +434,11 @@ abstract class AbstractCrudController extends AbstractController implements Crud
                 throw new ForbiddenActionException($context);
             }
 
-            dd($context->getCrud()->getActionsConfig());
-
             if (!$entityDto->isAccessible()) {
                 throw new InsufficientEntityPermissionException($context);
             }
+
+            //
 
             $event = new BeforeEntityDeletedEvent($entityInstance);
             $this->container->get('event_dispatcher')->dispatch($event);
@@ -455,6 +455,8 @@ abstract class AbstractCrudController extends AbstractController implements Crud
 
             $this->container->get('event_dispatcher')->dispatch(new AfterEntityDeletedEvent($entityInstance));
         }
+
+        dd($context->getCrud()->getActionsConfig());
 
         $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
             'entity' => $context->getEntity(),

@@ -222,8 +222,10 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         if (!$context->getEntity()->isAccessible()) {
             throw new InsufficientEntityPermissionException($context);
         }
+        dd($context->getCrud()->getActionsConfig());
 
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
+        dd($context->getCrud()->getActionsConfig());
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
         /** @var TEntity $entityInstance */
@@ -456,8 +458,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             $this->container->get('event_dispatcher')->dispatch(new AfterEntityDeletedEvent($entityInstance));
         }
 
-        dd($context->getCrud()->getActionsConfig());
-
         $responseParameters = $this->configureResponseParameters(KeyValueStore::new([
             'entity' => $context->getEntity(),
             'batchActionDto' => $batchActionDto,
@@ -489,8 +489,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
 
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
-        // we need to set pageName
-        dd($context->getCrud()->getActionsConfig());
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
         $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);

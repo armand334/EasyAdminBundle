@@ -420,8 +420,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
-        dd($context->getCrud()->getActionsConfig());
-
         /** @var EntityManagerInterface $entityManager */
         $entityManager = $this->container->get('doctrine')->getManagerForClass($batchActionDto->getEntityFqcn());
         $repository = $entityManager->getRepository($batchActionDto->getEntityFqcn());
@@ -435,6 +433,8 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             if (!$this->isGranted(Permission::EA_EXECUTE_ACTION, ['action' => Action::DELETE, 'entity' => $entityDto, 'entityFqcn' => $context->getEntity()->getFqcn()])) {
                 throw new ForbiddenActionException($context);
             }
+
+            dd($context->getCrud()->getActionsConfig());
 
             if (!$entityDto->isAccessible()) {
                 throw new InsufficientEntityPermissionException($context);

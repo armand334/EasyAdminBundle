@@ -486,7 +486,10 @@ abstract class AbstractCrudController extends AbstractController implements Crud
         }
 
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
+        dump($this->container);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
+        dump($context->getCrud());
+        dump($context->getEntity(), $context->getCrud()->getActionsConfig());
         $this->container->get(ActionFactory::class)->processEntityActions($context->getEntity(), $context->getCrud()->getActionsConfig());
 
         $editForm = $this->createEditForm($context->getEntity(), $context->getCrud()->getEditFormOptions(), $context);

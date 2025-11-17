@@ -483,7 +483,6 @@ abstract class AbstractCrudController extends AbstractController implements Crud
             return $this->redirectToRoute($context->getDashboardRouteName());
         }
 
-
         $this->container->get(FieldFactory::class)->processFields($context->getEntity(), FieldCollection::new($this->configureFields(Crud::PAGE_EDIT)), Crud::PAGE_EDIT);
         $context->getCrud()->setFieldAssets($this->getFieldAssets($context->getEntity()->getFields()));
         // we need to set pageName
